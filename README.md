@@ -18,8 +18,7 @@
 
 ### **Backend (AI Ruột)**
 - **FastAPI** → xử lý logic, API.  
-- **LangGraph** → quản lý hội thoại & memory (nhớ habit, streak, trạng thái).  
-- (Tùy chọn sau) **Agno** → nếu cần tool-use phức tạp.  
+- **Agno** → quản lý hội thoại & memory (nhớ habit, streak, trạng thái); hỗ trợ tool-use, đa phương thức nếu cần mở rộng.  
 
 ### **Database**
 - **Convex** → DB chính, realtime sync, auth cơ bản, không cần setup nhiều.  
@@ -42,7 +41,7 @@ v
 [FastAPI - logic, bridge AI] <-----------> [Real-time Updates]
 |
 v
-[LangGraph - AI memory + stateflow]
+[Agno - AI memory + stateflow]
 |
 v
 [LLM API (OpenAI/Gemini/...)]
@@ -72,4 +71,4 @@ v
 ## 🔑 Nguyên tắc
 - **Small first**: chỉ build 1–2 tính năng trước.  
 - **Đẹp & realtime** > backend phức tạp.  
-- **Dành cho bạn trước tiên** → sau đó mới mở rộng cộng đồng.  
+- **Dành cho bạn trước tiên** → sau đó mới mở rộng cộng đồng.
