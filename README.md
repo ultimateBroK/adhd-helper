@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧩 ADHD Helper Agent – MVP Plan
 
-## Getting Started
+## 🎯 Mục tiêu
+- Xây 1 AI Agent **giúp chính bạn** (và sau này có thể mở rộng cho người khác) vượt qua vòng lặp ADHD:  
+  *biết việc cần làm → không làm → thất vọng → tìm dopamine nhanh → càng khó quay lại*.  
+- Tập trung vào **dopamine-friendly UI**, realtime phản hồi, animation bắt mắt.  
+- Giảm số lượng công nghệ để tránh “tức đầu” vì setup.  
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## ⚙️ Techstack
+
+### **Frontend (UI)**
+- **Next.js** → framework chính.  
+- **shadcn/ui + Tailwind** → UI đẹp, dopamine-friendly.  
+- **Vercel AI SDK** → chat với AI (streaming).  
+- **Anime.js** → animation mượt, micro-interaction, dopamine boost.  
+
+### **Backend (AI Ruột)**
+- **FastAPI** → xử lý logic, API.  
+- **LangGraph** → quản lý hội thoại & memory (nhớ habit, streak, trạng thái).  
+- (Tùy chọn sau) **Agno** → nếu cần tool-use phức tạp.  
+
+### **Database**
+- **Convex** → DB chính, realtime sync, auth cơ bản, không cần setup nhiều.  
+  - Lưu **habit logs** (ngủ, học, trading, gym...).  
+  - Lưu **progress** (thống kê ngày/tuần).  
+  - Realtime update → UI nhảy số ngay (dopamine boost).  
+
+---
+
+## 🖼️ Flow Kiến Trúc
+```
+[UI - Next.js + shadcn + Tailwind + Vercel AI SDK]
+|
+|---> [Anime.js - Animation Dopamine Boost]
+|
+v
+[Convex DB - habit logs, progress, realtime sync]
+^                                              |
+|                                              v
+[FastAPI - logic, bridge AI] <-----------> [Real-time Updates]
+|
+v
+[LangGraph - AI memory + stateflow]
+|
+v
+[LLM API (OpenAI/Gemini/...)]
+
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📱 Chức năng cốt lõi (MVP)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Chat với AI (người đồng hành)**  
+   - AI động viên, nhắc nhở.  
+   - Typing animation → cảm giác có người thực sự đang “trò chuyện”.  
 
-## Learn More
+2. **Habit Tracker**  
+   - Log thói quen hằng ngày (ngủ, học, gym, trading).  
+   - Khi log thành công → icon bounce ✨.  
 
-To learn more about Next.js, take a look at the following resources:
+3. **Progress Dashboard**  
+   - Hiển thị streak & tiến trình.  
+   - Khi streak tăng → animation “fire streak” 🔥.  
+   - Khi đạt milestone → confetti 🎉.  
+   - Progress bar fill bằng transition mượt.  
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🔑 Nguyên tắc
+- **Small first**: chỉ build 1–2 tính năng trước.  
+- **Đẹp & realtime** > backend phức tạp.  
+- **Dành cho bạn trước tiên** → sau đó mới mở rộng cộng đồng.  
