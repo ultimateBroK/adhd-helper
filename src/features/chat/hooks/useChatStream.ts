@@ -22,7 +22,7 @@ export function useChatStream() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model, messages: [{ role: "user", content: userMessage.content }], stream: true }),
+        body: JSON.stringify({ model, messages: [{ role: "user", content: userMessage.content }] }),
       });
       if (!res.body) throw new Error("No response body");
 
@@ -37,51 +37,41 @@ export function useChatStream() {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          const chunk = new TextDecoder().decode(value);
-          const lines = chunk.split("\n");
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            try {
-              const json = JSON.parse(line);
-              const delta: string = json.message?.content ?? json.response ?? "";
-              if (!delta) continue;
+          const delta = new TextDecoder().decode(value);
+          if (!delta) continue;
 
-              let cursor = 0;
-              while (cursor < delta.length) {
-                if (inThinking) {
-                  const closeIdx = delta.indexOf("</think>", cursor);
-                  if (closeIdx === -1) {
-                    thinking += delta.slice(cursor);
-                    cursor = delta.length;
-                  } else {
-                    thinking += delta.slice(cursor, closeIdx);
-                    inThinking = false;
-                    cursor = closeIdx + 8;
-                  }
+          let cursor = 0;
+          while (cursor < delta.length) {
+            if (inThinking) {
+              const closeIdx = delta.indexOf("</think>", cursor);
+              if (closeIdx === -1) {
+                thinking += delta.slice(cursor);
+                cursor = delta.length;
+              } else {
+                thinking += delta.slice(cursor, closeIdx);
+                inThinking = false;
+                cursor = closeIdx + 8;
+              }
+            } else {
+              const openIdx = delta.indexOf("<think>", cursor);
+              if (openIdx === -1) {
+                content += delta.slice(cursor);
+                cursor = delta.length;
+              } else {
+                content += delta.slice(cursor, openIdx);
+                const closeIdx = delta.indexOf("</think>", openIdx + 7);
+                if (closeIdx === -1) {
+                  inThinking = true;
+                  cursor = openIdx + 7;
                 } else {
-                  const openIdx = delta.indexOf("<think>", cursor);
-                  if (openIdx === -1) {
-                    content += delta.slice(cursor);
-                    cursor = delta.length;
-                  } else {
-                    content += delta.slice(cursor, openIdx);
-                    const closeIdx = delta.indexOf("</think>", openIdx + 7);
-                    if (closeIdx === -1) {
-                      inThinking = true;
-                      cursor = openIdx + 7;
-                    } else {
-                      thinking += delta.slice(openIdx + 7, closeIdx);
-                      cursor = closeIdx + 8;
-                    }
-                  }
+                  thinking += delta.slice(openIdx + 7, closeIdx);
+                  cursor = closeIdx + 8;
                 }
               }
-
-              setMessages((prev) => prev.map((m) => (m.id === aiId ? { ...m, content, thinking } : m)));
-            } catch {
-              // ignore bad lines
             }
           }
+
+          setMessages((prev) => prev.map((m) => (m.id === aiId ? { ...m, content, thinking } : m)));
         }
       } finally {
         reader.releaseLock();

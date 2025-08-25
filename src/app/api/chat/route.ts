@@ -1,37 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOllamaApiUrl } from '@/lib/ai/provider';
+import { streamText } from 'ai';
+import { ollama } from 'ollama-ai-provider-v2';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-
-    const response = await fetch(getOllamaApiUrl('/chat'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
+    const { model, messages, think } = await request.json();
+    // Use AI SDK streaming with maintained Ollama provider (v2)
+    const result = await streamText({
+      model: ollama(model),
+      messages,
+      providerOptions: think ? { ollama: { think: true } } : undefined,
     });
 
-    if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.status}`);
-    }
-
-    // For streaming responses, we need to proxy the stream
-    if (body.stream) {
-      const stream = response.body;
-      return new NextResponse(stream, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: {
-          'Content-Type': 'text/plain',
-        },
-      });
-    }
-
-    // For non-streaming responses
-    const data = await response.json();
-    return NextResponse.json(data);
+    // Return plain text token stream; client will parse <think> ... </think>
+    return result.toTextStreamResponse();
   } catch (error) {
     console.error('API route error:', error);
     return NextResponse.json(
