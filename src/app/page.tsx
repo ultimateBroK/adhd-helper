@@ -1,20 +1,19 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Send, Bot, User, Sparkles } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
+import { useChatStream } from "@/features/chat/hooks/useChatStream";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useAnimeEnter } from "@/lib/animations/hooks";
+import { animateEnter, animateStaggerChildren } from "@/lib/animations/anime";
 
-interface Message {
-  id: string;
-  role: "user" | "assistant" | "typing";
-  content: string;
-  timestamp: Date;
-}
+import type { Message } from "@/features/chat/types";
 
 // Component để render nội dung tin nhắn với markdown
-const MessageContent = ({ content, role }: { content: string; role: "user" | "assistant" }) => {
+const MessageContent = ({ content, role, thinking }: { content: string; role: "user" | "assistant"; thinking?: string }) => {
   if (role === "user") {
     return <span className="whitespace-pre-wrap">{content}</span>;
   }
@@ -66,16 +65,54 @@ const MessageContent = ({ content, role }: { content: string; role: "user" | "as
       >
         {content}
       </ReactMarkdown>
+      {thinking ? <ThinkingBlock text={thinking} /> : null}
+    </div>
+  );
+};
+
+const ThinkingBlock = ({ text }: { text: string }) => {
+  const [open, setOpen] = useState(false);
+  const thinkRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (open && thinkRef.current) {
+      animateEnter(thinkRef.current, { distance: 6, duration: 300, opacityFrom: 0 });
+    }
+  }, [open]);
+  return (
+    <div className="mt-2 pt-2 border-t border-emerald-100 dark:border-emerald-800">
+      <button
+        type="button"
+        className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
+        onClick={() => setOpen((v) => !v)}
+      >
+        {open ? "Ẩn suy nghĩ" : "Hiển thị suy nghĩ"}
+      </button>
+      {open ? (
+        <div ref={thinkRef} className="mt-2 text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
+          {text}
+        </div>
+      ) : null}
     </div>
   );
 };
 
 export default function Home() {
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
+  const { messages, isTyping, send, lastAnimatedIdRef, setMessages } = useChatStream();
+  const [models, setModels] = useState<string[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>("hf.co/unsloth/gemma-3-270m-it-GGUF:Q8_K_XL");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const suggestions: string[] = [
+    "Tóm tắt giúp tôi nội dung này",
+    "Lập kế hoạch làm việc theo Pomodoro",
+    "Gợi ý checklist để bắt đầu một dự án",
+    "Biến ghi chú này thành bullet rõ ràng",
+  ];
+
+  useAnimeEnter(headerRef, { distance: 16, duration: 700 });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -84,6 +121,42 @@ export default function Home() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    // Load available models from Ollama
+    const loadModels = async () => {
+      try {
+        const res = await fetch('/api/models');
+        const data = await res.json();
+        type OllamaModel = { name: string };
+        const list = ((data?.models as OllamaModel[] | undefined) ?? []).map((m) => m.name).filter(Boolean);
+        if (list.length) {
+          setModels(list);
+          setSelectedModel((prev) => (prev && list.includes(prev) ? prev : list[0]));
+        }
+      } catch (e) {
+        console.warn('Failed to load models', e);
+      }
+    };
+    loadModels();
+  }, []);
+
+  useEffect(() => {
+    if (!messagesContainerRef.current) return;
+    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+    if (!lastAssistant) return;
+    if (lastAnimatedIdRef.current === lastAssistant.id) return;
+    const bubbles = messagesContainerRef.current.querySelectorAll(".message-bubble");
+    if (!bubbles.length) return;
+    const lastBubble = bubbles[bubbles.length - 1] as Element;
+    animateEnter(lastBubble, { distance: 8, duration: 450, opacityFrom: 0 });
+    lastAnimatedIdRef.current = lastAssistant.id;
+  }, [messages]);
+
+  useEffect(() => {
+    // Animate suggestion chips on first render
+    animateStaggerChildren('.suggestion-bar', '.chip', { distance: 10, duration: 400 });
+  }, []);
 
   useEffect(() => {
     // Add welcome message with markdown example
@@ -110,103 +183,9 @@ Hãy bắt đầu bằng cách hỏi tôi bất cứ điều gì bạn cần h�
   }, []);
 
   const sendMessage = async () => {
-    if (!message.trim()) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: message.trim(),
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    const text = message;
     setMessage("");
-    setIsTyping(true);
-
-    // Add typing indicator
-    const typingMessage: Message = {
-      id: "typing",
-      role: "typing",
-      content: "",
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, typingMessage]);
-
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "hf.co/unsloth/gemma-3-270m-it-GGUF:Q8_K_XL",
-          messages: [{ role: "user", content: userMessage.content }],
-          stream: true,
-        }),
-      });
-
-      if (!res.body) {
-        throw new Error("No response body");
-      }
-
-      const reader = res.body.getReader();
-      let aiResponse = "";
-      const aiMessageId = (Date.now() + 1).toString();
-
-      // Remove typing indicator and add AI message
-      setMessages((prev) => {
-        const filtered = prev.filter((msg) => msg.id !== "typing");
-        return [...filtered, {
-          id: aiMessageId,
-          role: "assistant",
-          content: "",
-          timestamp: new Date(),
-        }];
-      });
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = new TextDecoder().decode(value);
-          const lines = chunk.split("\n");
-
-                          for (const line of lines) {
-                  if (line.trim()) {
-                    try {
-                      const json = JSON.parse(line);
-                      aiResponse += json.message.content;
-
-                      setMessages((prev) =>
-                        prev.map((msg) =>
-                          msg.id === aiMessageId
-                            ? { ...msg, content: aiResponse }
-                            : msg
-                        )
-                      );
-                    } catch {
-                      console.warn("Failed to parse line:", line);
-                    }
-                  }
-                }
-        }
-      } finally {
-        reader.releaseLock();
-      }
-    } catch (error) {
-      console.error("Error sending message:", error);
-      // Remove typing indicator and add error message
-      setMessages((prev) => {
-        const filtered = prev.filter((msg) => msg.id !== "typing");
-        return [...filtered, {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: "Xin lỗi, có lỗi xảy ra khi xử lý tin nhắn của bạn. Vui lòng thử lại.",
-          timestamp: new Date(),
-        }];
-      });
-    } finally {
-      setIsTyping(false);
-    }
+    await send(selectedModel, text);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -227,7 +206,7 @@ Hãy bắt đầu bằng cách hỏi tôi bất cứ điều gì bạn cần h�
     <div className="chat-container">
       <div className="chat-wrapper">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div ref={headerRef} className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
             <div className="p-3 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full shadow-lg">
               <Sparkles className="w-8 h-8 text-white" />
@@ -279,7 +258,7 @@ Hãy bắt đầu bằng cách hỏi tôi bất cứ điều gì bạn cần h�
                       msg.role === "user" ? "message-user" : "message-ai"
                     }`}
                   >
-                    <MessageContent content={msg.content} role={msg.role} />
+                    <MessageContent content={msg.content} role={msg.role} thinking={msg.thinking} />
                   </div>
                 )}
 
@@ -307,6 +286,16 @@ Hãy bắt đầu bằng cách hỏi tôi bất cứ điều gì bạn cần h�
         {/* Input Container */}
         <div className="input-container">
           <div className="flex gap-3 items-end">
+            <div className="min-w-[220px] max-w-[320px]">
+              <Select
+                value={selectedModel}
+                onChange={setSelectedModel}
+                className="w-full truncate"
+                options={(models.length ? models : [selectedModel]).map((m) => ({ label: compactModelName(m), value: m }))}
+                placeholder="Chọn model"
+                disabled={isTyping}
+              />
+            </div>
             <div className="flex-1">
               <Input
                 value={message}
@@ -316,6 +305,18 @@ Hãy bắt đầu bằng cách hỏi tôi bất cứ điều gì bạn cần h�
                 disabled={isTyping}
                 className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base placeholder:text-slate-500 resize-none"
               />
+              <div ref={suggestionsRef} className="suggestion-bar mt-2 flex flex-wrap gap-2">
+                {suggestions.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className="chip text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition"
+                    onClick={() => setMessage(s)}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
             <Button
               onClick={sendMessage}
@@ -335,4 +336,15 @@ Hãy bắt đầu bằng cách hỏi tôi bất cứ điều gì bạn cần h�
       </div>
     </div>
   );
+}
+
+function compactModelName(m: string) {
+  // Examples:
+  // "hf.co/unsloth/gemma-3-270m-it-GGUF:Q8_K_XL" -> "gemma-3-270m-it (Q8_K_XL)"
+  // "qwen2.5:3b" -> "qwen2.5 (3b)"
+  const parts = m.split('/')
+  const last = parts[parts.length - 1]
+  const [name, tag] = last.split(':')
+  const cleaned = name.replace(/-GGUF$/i, '')
+  return tag ? `${cleaned} (${tag})` : cleaned
 }

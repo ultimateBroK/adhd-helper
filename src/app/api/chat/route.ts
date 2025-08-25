@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getOllamaApiUrl } from '@/lib/ai/provider';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const response = await fetch('http://localhost:11434/api/chat', {
+    const response = await fetch(getOllamaApiUrl('/chat'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
