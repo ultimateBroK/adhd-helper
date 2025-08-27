@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { animateEnter } from "@/lib/animations/anime";
 
 export default function ThinkingBlock({ text }: { text?: string }) {
-  if (!text) return null;
   const [open, setOpen] = useState(false);
   const thinkRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -11,6 +10,7 @@ export default function ThinkingBlock({ text }: { text?: string }) {
       animateEnter(thinkRef.current, { distance: 6, duration: 300, opacityFrom: 0 });
     }
   }, [open]);
+  if (!text) return null;
   return (
     <div className="mt-2 pt-2 border-t border-emerald-100 dark:border-emerald-800">
       <button
