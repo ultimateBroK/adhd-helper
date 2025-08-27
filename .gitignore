@@ -148,3 +148,6 @@ temp/
 
 # Turbo
 .turbo
+
+# Qwen
+QWEN.md
