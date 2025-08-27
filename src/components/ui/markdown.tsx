@@ -4,6 +4,9 @@ import {
   memo,
   useId,
   useMemo,
+  useRef,
+  useEffect,
+  useState,
   isValidElement,
   type ReactNode,
   type ReactElement,
@@ -296,3 +299,70 @@ const Markdown = memo(MarkdownComponent)
 Markdown.displayName = "Markdown"
 
 export { Markdown }
+
+// Streaming-friendly Markdown that fades in new blocks as text grows
+export function StreamingMarkdown({
+  text,
+  className,
+  fadeDuration,
+  segmentDelay,
+  components = INITIAL_COMPONENTS,
+}: {
+  text: string
+  className?: string
+  fadeDuration?: number
+  segmentDelay?: number
+  components?: Partial<Components>
+}) {
+  const [blocks, setBlocks] = useState<string[]>([])
+  const prevTextRef = useRef("")
+  const fadeStartIndexRef = useRef(0)
+
+  const getFadeDuration = () => {
+    if (typeof fadeDuration === "number") return Math.max(10, fadeDuration)
+    // default consistent with response streaming
+    return 600
+  }
+
+  const getSegmentDelay = () => {
+    if (typeof segmentDelay === "number") return Math.max(0, segmentDelay)
+    return 80
+  }
+
+  useEffect(() => {
+    const prev = prevTextRef.current
+    const isAppend = text.startsWith(prev)
+    const newBlocks = parseMarkdownIntoBlocks(text)
+    if (!isAppend) {
+      fadeStartIndexRef.current = 0
+    } else {
+      const prevBlocks = parseMarkdownIntoBlocks(prev)
+      fadeStartIndexRef.current = prevBlocks.length
+    }
+    setBlocks(newBlocks)
+    prevTextRef.current = text
+  }, [text])
+
+  const fadeStyle = `
+    @keyframes fadeInMd {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .md-fade-segment { opacity: 0; display: block; animation: fadeInMd ${getFadeDuration()}ms ease-out forwards; }
+  `
+
+  return (
+    <div className={className}>
+      <style>{fadeStyle}</style>
+      {blocks.map((block, index) => (
+        <span
+          key={`md-block-${index}`}
+          className="md-fade-segment"
+          style={{ animationDelay: `${Math.max(0, index - fadeStartIndexRef.current) * getSegmentDelay()}ms` }}
+        >
+          <MemoizedMarkdownBlock content={block} components={components} />
+        </span>
+      ))}
+    </div>
+  )
+}

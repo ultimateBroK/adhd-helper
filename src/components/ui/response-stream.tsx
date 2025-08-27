@@ -22,6 +22,7 @@ export type UseTextStreamResult = {
   segments: { text: string; index: number }[]
   getFadeDuration: () => number
   getSegmentDelay: () => number
+  getFadeStartIndex: () => number
   reset: () => void
   startStreaming: () => void
   pause: () => void
@@ -31,7 +32,7 @@ export type UseTextStreamResult = {
 function useTextStream({
   textStream,
   speed = 20,
-  mode = "typewriter",
+  mode = "fade",
   onComplete,
   fadeDuration,
   segmentDelay,
@@ -54,6 +55,8 @@ function useTextStream({
   const streamRef = useRef<AbortController | null>(null)
   const completedRef = useRef(false)
   const onCompleteRef = useRef(onComplete)
+  const previousTextRef = useRef("")
+  const fadeStartIndexRef = useRef(0)
 
   useEffect(() => {
     speedRef.current = speed
@@ -135,7 +138,7 @@ function useTextStream({
         onError?.(error)
       }
     }
-  }, [])
+  }, [onError])
 
   const markComplete = useCallback(() => {
     if (!completedRef.current) {
@@ -158,8 +161,18 @@ function useTextStream({
     }
   }, [])
 
-  const processStringTypewriter = useCallback(
+  const processString = useCallback(
     (text: string) => {
+      if (modeRef.current === "fade") {
+        // In fade mode for static strings, render all content at once
+        // and rely on segment fade-in CSS for the visual effect
+        setDisplayedText(text)
+        updateSegments(text)
+        markComplete()
+        return
+      }
+
+      // Typewriter mode: progressively reveal characters
       let lastFrameTime = 0
 
       const streamContent = (timestamp: number) => {
@@ -228,14 +241,43 @@ function useTextStream({
   )
 
   const startStreaming = useCallback(() => {
-    reset()
-
     if (typeof textStream === "string") {
-      processStringTypewriter(textStream)
+      // Handle incremental updates for fade mode without resetting animations
+      if (modeRef.current === "fade") {
+        const prev = previousTextRef.current
+        const next = textStream
+        const isAppend = next.startsWith(prev)
+
+        if (!isAppend) {
+          // New content that is not an append – reset completely
+          reset()
+          fadeStartIndexRef.current = 0
+          setDisplayedText(next)
+          updateSegments(next)
+        } else if (next.length > prev.length) {
+          // Append behavior: keep existing segments and update with new text
+          // Mark current segments as stable so only new ones fade
+          fadeStartIndexRef.current = segments.length
+          setDisplayedText(next)
+          updateSegments(next)
+        }
+
+        previousTextRef.current = next
+        return
+      }
+
+      // Non-fade or initial: do the original behavior
+      reset()
+      fadeStartIndexRef.current = 0
+      processString(textStream)
+      previousTextRef.current = textStream
     } else if (textStream) {
+      reset()
+      fadeStartIndexRef.current = 0
       processAsyncIterable(textStream)
+      previousTextRef.current = ""
     }
-  }, [textStream, reset, processStringTypewriter, processAsyncIterable])
+  }, [textStream, reset, processString, processAsyncIterable, updateSegments, segments])
 
   const pause = useCallback(() => {
     if (animationRef.current) {
@@ -246,9 +288,9 @@ function useTextStream({
 
   const resume = useCallback(() => {
     if (typeof textStream === "string" && !isComplete) {
-      processStringTypewriter(textStream)
+      processString(textStream)
     }
-  }, [textStream, isComplete, processStringTypewriter])
+  }, [textStream, isComplete, processString])
 
   useEffect(() => {
     startStreaming()
@@ -269,6 +311,7 @@ function useTextStream({
     segments,
     getFadeDuration,
     getSegmentDelay,
+    getFadeStartIndex: useCallback(() => fadeStartIndexRef.current, []),
     reset,
     startStreaming,
     pause,
@@ -307,6 +350,7 @@ function ResponseStream({
     segments,
     getFadeDuration,
     getSegmentDelay,
+    getFadeStartIndex,
   } = useTextStream({
     textStream,
     speed,
@@ -367,7 +411,7 @@ function ResponseStream({
                       isWhitespace && "fade-segment-space"
                     )}
                     style={{
-                      animationDelay: `${idx * getSegmentDelay()}ms`,
+                      animationDelay: `${Math.max(0, (idx - getFadeStartIndex())) * getSegmentDelay()}ms`,
                     }}
                     onAnimationEnd={
                       isLastSegment ? handleLastSegmentAnimationEnd : undefined
