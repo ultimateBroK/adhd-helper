@@ -28,6 +28,9 @@ export default function InputBar({
   const handleSubmit = () => {
     if (inputValue.trim() && !disabled) {
       onSubmit()
+      // clear input after sending
+      setInputValue("")
+      onChange("")
     }
   }
 
