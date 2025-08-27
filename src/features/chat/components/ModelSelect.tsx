@@ -8,11 +8,11 @@ export default function ModelSelect({ models, selected, onChange, disabled }: {
   disabled?: boolean;
 }) {
   return (
-    <div className="min-w-[220px] max-w-[320px]">
+    <div className="min-w-[180px] max-w-[220px]">
       <Select
         value={selected}
         onChange={onChange}
-        className="w-full truncate"
+        className="w-full truncate h-[60px] flex items-center"
         options={(models.length ? models : [selected]).map((m) => ({ label: compactModelName(m), value: m }))}
         placeholder="Chọn model"
         disabled={disabled}

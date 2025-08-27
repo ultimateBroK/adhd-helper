@@ -1,55 +1,76 @@
-"use client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Send } from "lucide-react";
-import SuggestionChips from "./SuggestionChips";
+"use client"
+
+import { PromptInput, PromptInputTextarea, PromptInputActions } from "@/components/ui/prompt-input"
+import { RocketButton } from "@/components/ui/rocket-button"
+import { useState } from "react"
+import SuggestionChips from "./SuggestionChips"
+import ModelSelect from "./ModelSelect"
 
 export default function InputBar({
   value,
   onChange,
   onSubmit,
   disabled,
+  models,
+  selectedModel,
+  onModelChange,
 }: {
-  value: string;
-  onChange: (v: string) => void;
-  onSubmit: () => void;
-  disabled?: boolean;
+  value: string
+  onChange: (v: string) => void
+  onSubmit: () => void
+  disabled?: boolean
+  models: string[]
+  selectedModel: string
+  onModelChange: (model: string) => void
 }) {
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      onSubmit();
+  const [inputValue, setInputValue] = useState(value)
+
+  const handleSubmit = () => {
+    if (inputValue.trim() && !disabled) {
+      onSubmit()
     }
-  };
+  }
 
   return (
-    <div className="input-container">
-      <div className="flex gap-3 items-end">
-        <div className="flex-1">
-          <Input
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Nhập tin nhắn của bạn..."
-            disabled={disabled}
-            className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base placeholder:text-slate-500 resize-none"
-          />
-          <SuggestionChips onPick={onChange} />
+    <div className="w-full space-y-4 pb-4">
+      <div className="input-container">
+        <div className="flex gap-3 items-center">
+          <div className="flex-shrink-0">
+            <ModelSelect 
+              models={models} 
+              selected={selectedModel} 
+              onChange={onModelChange} 
+              disabled={disabled}
+            />
+          </div>
+          <PromptInput
+            value={inputValue}
+            onValueChange={(v) => {
+              setInputValue(v)
+              onChange(v)
+            }}
+            onSubmit={handleSubmit}
+            isLoading={disabled}
+            className="flex-1"
+          >
+            <PromptInputTextarea
+              placeholder="Type a message or click a suggestion..."
+              disabled={disabled}
+              className="text-base placeholder:text-slate-500 flex-1"
+            />
+            <PromptInputActions>
+              <RocketButton
+                onClick={handleSubmit}
+                disabled={!inputValue.trim() || disabled}
+              />
+            </PromptInputActions>
+          </PromptInput>
         </div>
-        <Button
-          onClick={onSubmit}
-          disabled={!value.trim() || disabled}
-          size="lg"
-          className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
-        >
-          <Send className="w-5 h-5" />
-        </Button>
       </div>
-      <div className="mt-3 text-xs text-slate-500 dark:text-slate-400 text-center">
-        Nhấn Enter để gửi • Shift + Enter để xuống dòng
-      </div>
+      <SuggestionChips onPick={(v) => {
+        setInputValue(v)
+        onChange(v)
+      }} />
     </div>
-  );
+  )
 }
-
-

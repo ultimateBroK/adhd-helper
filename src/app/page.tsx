@@ -89,15 +89,24 @@ Hãy bắt đầu bằng cách hỏi tôi bất cứ điều gì bạn cần h�
   return (
     <div className="chat-container">
       <div className="chat-wrapper">
-        <ChatHeader />
+        <div className="flex-shrink-0">
+          <ChatHeader />
+        </div>
 
-        <MessageList messages={messages} containerRef={messagesContainerRef} lastAnimatedIdRef={lastAnimatedIdRef} />
+        <div className="flex-1 min-h-0">
+          <MessageList messages={messages} containerRef={messagesContainerRef} lastAnimatedIdRef={lastAnimatedIdRef} />
+        </div>
 
-        <div className="flex gap-3 items-end">
-          <ModelSelect models={models} selected={selectedModel} onChange={setSelectedModel} disabled={isTyping} />
-          <div className="flex-1">
-            <InputBar value={message} onChange={setMessage} onSubmit={sendMessage} disabled={isTyping} />
-          </div>
+        <div className="flex-shrink-0">
+          <InputBar 
+            value={message} 
+            onChange={setMessage} 
+            onSubmit={sendMessage} 
+            disabled={isTyping}
+            models={models}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+          />
         </div>
       </div>
     </div>

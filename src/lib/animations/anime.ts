@@ -49,7 +49,7 @@ export async function animateStaggerChildren(
 
 export async function animateElement(
   element: Element,
-  options: Partial<{ translateY: [number, number]; opacity: [number, number]; duration: number; delay: number }>
+  options: Partial<{ translateY: [number, number]; opacity: [number, number]; rotate: [number, number]; duration: number; delay: number }>
 ): Promise<void> {
   if (typeof window === "undefined") return;
   const { animate, eases } = await import("animejs");

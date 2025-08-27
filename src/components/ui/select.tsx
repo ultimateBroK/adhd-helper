@@ -13,7 +13,7 @@ export function Select({ value, onChange, options, placeholder, disabled, classN
 }) {
   return (
     <select
-      className={`h-10 px-3 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm ${className ?? ''}`}
+      className={`px-3 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm ${className ?? ''}`}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
