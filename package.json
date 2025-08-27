@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "preinstall": "sh -c 'case \"$npm_config_user_agent\" in *bun*) ;; *) echo \"This project uses Bun. Use bun install\"; exit 1;; esac'",
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint"
   },
+  "packageManager": "bun@1.2.20",
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tooltip": "^1.2.8",
